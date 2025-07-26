@@ -1,0 +1,9 @@
+2025-07-25 21:37:42,816 - __main__ - INFO - Starting Market Data Fetcher...
+2025-07-25 21:37:42,818 - src.utils.config_manager - INFO - Configuration saved to C:\Users\91894\Projects\market-data\config\config.ini
+2025-07-25 21:37:42,818 - src.utils.config_manager - INFO - Created default configuration at C:\Users\91894\Projects\market-data\config\config.ini
+2025-07-25 21:37:43,813 - src.data_sources.nse_fetcher - INFO - Session initialized. Status code: 200
+2025-07-25 21:37:43,814 - __main__ - INFO - Fetching NSE data...
+2025-07-25 21:37:43,929 - src.data_sources.nse_fetcher - ERROR - Error fetching index data for NIFTY: Expecting value: line 1 column 1 (char 0)
+2025-07-25 21:37:44,012 - src.data_sources.nse_fetcher - ERROR - Error fetching stock codes: Expecting value: line 1 column 1 (char 0)
+2025-07-25 21:37:44,013 - __main__ - INFO - Found 0 stocks in NSE
+2025-07-25 21:37:44,014 - __main__ - INFO - Market Data Fetcher completed successfully!
