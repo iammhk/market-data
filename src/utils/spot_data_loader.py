@@ -45,7 +45,7 @@ SYMBOL_MAPPINGS = {
 def load_spot_data(
     symbol: str,
     data_path: str,
-    start_date: str = "2024-01-01",
+    start_date: str = "2023-01-01",
     end_date: Optional[str] = None,
     force_download: bool = False,
     plot_data: bool = True,
@@ -250,7 +250,7 @@ def create_spot_plot(spot_data: pd.DataFrame, symbol: str) -> None:
 def load_multiple_symbols(
     symbols: List[str],
     data_path: str,
-    start_date: str = "2024-01-01",
+    start_date: str = "2023-01-01",
     end_date: Optional[str] = None,
     force_download: bool = False,
     plot_data: bool = False
@@ -376,7 +376,7 @@ def search_symbols(query: str) -> Dict[str, str]:
 # Legacy support functions for backward compatibility
 def load_banknifty_data(
     data_path: str,
-    start_date: str = "2024-01-01",
+    start_date: str = "2023-01-01",
     end_date: Optional[str] = None,
     force_download: bool = False,
     plot_data: bool = True
