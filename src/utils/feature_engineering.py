@@ -3,11 +3,14 @@ Feature Engineering Module for XGBoost Bank Nifty Prediction
 
 This module contains all the feature engineering functions for creating
 robust features from options data, spot price data, and technical indicators.
+
+Now includes intelligent caching support for improved performance.
 """
 
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple
+import os
 
 
 def safe_numeric_conversion(series: pd.Series) -> pd.Series:
@@ -505,3 +508,155 @@ def get_feature_groups() -> Dict[str, List[str]]:
             'is_month_end', 'is_quarter_end'
         ]
     }
+
+
+def create_features_with_cache(df_call: pd.DataFrame, df_put: pd.DataFrame, 
+                              bank_nifty: pd.DataFrame, cache_dir: Optional[str] = None,
+                              max_cache_age_hours: int = 24, force_regenerate: bool = False) -> pd.DataFrame:
+    """
+    Create features with intelligent caching support
+    
+    This function wraps create_robust_options_features with caching capabilities:
+    - Automatically checks for cached features based on input data hash
+    - Loads cached features if available and not expired
+    - Generates new features if cache miss or expired
+    - Saves new features to cache for future use
+    
+    Args:
+        df_call (pd.DataFrame): Call options data
+        df_put (pd.DataFrame): Put options data
+        bank_nifty (pd.DataFrame): Bank Nifty spot data
+        cache_dir (str, optional): Directory for cache storage. Defaults to ./data/cache
+        max_cache_age_hours (int): Maximum age of cached features in hours. Default: 24
+        force_regenerate (bool): Force regeneration even if cache exists. Default: False
+        
+    Returns:
+        pd.DataFrame: Engineered features dataset
+        
+    Example:
+        >>> features_df = create_features_with_cache(df_call, df_put, bank_nifty)
+        >>> # First run: Generates and caches features
+        >>> # Subsequent runs: Loads from cache if available
+    """
+    try:
+        # Import the caching module
+        from .feature_cache import FeatureCache
+        
+        # Initialize cache
+        cache = FeatureCache(cache_dir, max_cache_age_hours)
+        
+        # Generate cache key from input data
+        cache_key = cache.generate_data_hash(df_call, df_put, bank_nifty)
+        
+        # Try to load from cache first (unless forced regeneration)
+        if not force_regenerate:
+            features_df, cache_status = cache.load_features(cache_key, "xgboost_features")
+            
+            if features_df is not None:
+                print(f"🚀 Using cached features: {cache_status}")
+                return features_df
+            else:
+                print(f"🔄 Cache miss: {cache_status}")
+        else:
+            print("🔄 Forced regeneration: Skipping cache lookup")
+        
+        # Generate features using the main function
+        print("⚙️ Generating features using create_robust_options_features...")
+        features_df = create_robust_options_features(df_call, df_put, bank_nifty)
+        
+        if features_df is not None and not features_df.empty:
+            # Prepare metadata for caching
+            metadata = {
+                'call_records': len(df_call),
+                'put_records': len(df_put),
+                'spot_records': len(bank_nifty),
+                'date_range': f"{features_df['Date'].min():%Y-%m-%d} to {features_df['Date'].max():%Y-%m-%d}",
+                'feature_count': len([col for col in features_df.columns if col not in ['Date', 'target_spot_price']]),
+                'shape': str(features_df.shape),
+                'generated_at': pd.Timestamp.now().isoformat()
+            }
+            
+            # Save to cache
+            cache_saved = cache.save_features(features_df, cache_key, metadata, "xgboost_features")
+            
+            if cache_saved:
+                print("✅ Features saved to cache for future use")
+            else:
+                print("⚠️ Failed to save features to cache")
+        
+        return features_df
+        
+    except ImportError:
+        print("⚠️ Feature caching not available - using direct generation")
+        print("💡 To enable caching, ensure feature_cache.py is available")
+        return create_robust_options_features(df_call, df_put, bank_nifty)
+    
+    except Exception as e:
+        print(f"❌ Error in cached feature generation: {e}")
+        print("🔄 Falling back to direct feature generation")
+        return create_robust_options_features(df_call, df_put, bank_nifty)
+
+
+def clear_feature_cache(cache_dir: Optional[str] = None, confirm: bool = False, older_than_hours: Optional[int] = None) -> int:
+    """
+    Clear cached feature files
+    
+    Args:
+        cache_dir (str, optional): Cache directory. Defaults to ./data/cache
+        confirm (bool): Must be True to actually delete files
+        older_than_hours (int, optional): Only delete files older than this
+        
+    Returns:
+        int: Number of files deleted
+    """
+    try:
+        from .feature_cache import FeatureCache
+        
+        cache = FeatureCache(cache_dir)
+        return cache.clear_cache("xgboost_features", confirm, older_than_hours)
+        
+    except ImportError:
+        print("❌ Feature caching module not available")
+        return 0
+
+
+def list_cached_features(cache_dir: Optional[str] = None) -> pd.DataFrame:
+    """
+    List all cached feature files with details
+    
+    Args:
+        cache_dir (str, optional): Cache directory. Defaults to ./data/cache
+        
+    Returns:
+        pd.DataFrame: Information about cached files
+    """
+    try:
+        from .feature_cache import FeatureCache
+        
+        cache = FeatureCache(cache_dir)
+        return cache.list_cached_features("xgboost_features")
+        
+    except ImportError:
+        print("❌ Feature caching module not available")
+        return pd.DataFrame()
+
+
+def validate_feature_cache(cache_dir: Optional[str] = None) -> Dict:
+    """
+    Validate cached feature files
+    
+    Args:
+        cache_dir (str, optional): Cache directory. Defaults to ./data/cache
+        
+    Returns:
+        Dict: Validation summary
+    """
+    try:
+        from .feature_cache import FeatureCache
+        
+        cache = FeatureCache(cache_dir)
+        return cache.validate_cache("xgboost_features")
+        
+    except ImportError:
+        print("❌ Feature caching module not available")
+    return {'error': 'Caching module not available'}
